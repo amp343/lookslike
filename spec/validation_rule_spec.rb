@@ -1,17 +1,13 @@
 require 'spec_helper'
 
-def build_validation_rule
-  Lookslike::ValidationRule.new('', nil)
-end
-
 describe Lookslike::ValidationRule do
   describe '#initialize' do
     it 'should raise TypeError if name is not a string' do
-      expect { Lookslike::ValidationRule.new(1, nil, {}) }.to raise_error TypeError, 'name must be a String'
+      expect { Lookslike::ValidationRule.new(1, nil, {}) }.to raise_error TypeError, '1 must be a String'
     end
 
     it 'should raise TypeError if args is not a hash' do
-      expect { Lookslike::ValidationRule.new('name', nil, []) }.to raise_error TypeError, 'rules must be a Hash'
+      expect { Lookslike::ValidationRule.new('name', nil, []) }.to raise_error TypeError, '[] must be a Hash'
     end
 
     it 'should set @name equal to the name arg' do
@@ -30,73 +26,112 @@ describe Lookslike::ValidationRule do
     end
   end
 
-  describe '#build_error' do
+  describe '#decorate_error' do
     it 'should return an instance of the given class with the expected message' do
       rule = Lookslike::ValidationRule.new('name', nil)
       error = TypeError.new 'message'
-      decorated = rule.build_error(error)
+      decorated = rule.decorate_error(error)
       expect(decorated.class).to eq TypeError
       expect(decorated.message).to eq 'property name: message'
     end
   end
 
-  #     def build_error(e)
-  #       e.class.new('property ' + @name + ': ' + e.message)
+  describe '#validate' do
+    it 'should re-raise a built ValidationError error for any ValidationError that is raised' do
+      rule = Lookslike::ValidationRule.new('name', nil,
+        custom: Proc.new { raise Lookslike::Errors::ValidationError.new 'error' },
+        custom_message: 'message'
+      )
+      expect { rule.validate }.to raise_error Lookslike::Errors::CustomError, 'property name: message'
+    end
+  end
+
+  describe '#validate_required' do
+    it 'should raise Errors::RequiredError if @data is nil' do
+      expect { Lookslike::ValidationRule.new('name', nil).validate_required }.to raise_error Lookslike::Errors::RequiredError
+    end
+
+    it 'should not raise if @data is present' do
+      expect { Lookslike::ValidationRule.new('name', 1).validate_required }.to_not raise_error
+    end
+  end
+
+  describe '#validate_type' do
+    it 'should raise Errors::TypeError if @data is not of type @rules[:type]' do
+      expect {
+        Lookslike::ValidationRule.new('name', 1, type: String).validate_type
+      }.to raise_error Lookslike::Errors::TypeError
+    end
+
+    it 'should not raise if @data is of type @rules[:type]' do
+      expect { Lookslike::ValidationRule.new('name', 1, type: Integer).validate_type }.to_not raise_error
+    end
+  end
+
+  describe '#validate_custom' do
+    it 'should raise Errors::TypeError if @rules[:custom].call is not a Proc' do
+      expect {
+        Lookslike::ValidationRule.new('name', 1, custom: 1).validate_custom
+      }.to raise_error TypeError
+    end
+
+    it 'should raise Errors::CustomError if @rules[:custom].call (Proc) raises StandardError' do
+      expect {
+        Lookslike::ValidationRule.new('name', 1, custom: Proc.new { raise 'error' }).validate_custom
+      }.to raise_error Lookslike::Errors::CustomError
+    end
+
+    it 'should not raise if rules[:custom].call does not raise' do
+      expect { Lookslike::ValidationRule.new('name', 1, custom: Proc.new {}).validate_custom }.to_not raise_error
+    end
+  end
+
+  describe '#validate_value' do
+    it 'should raise Errors::ValueError if @rules[:value] is a single value and does not match @data' do
+      expect { Lookslike::ValidationRule.new('name', 1, value: 2).validate_value }.to raise_error Lookslike::Errors::ValueError
+    end
+
+    it 'should raise Errors::ValueError if @rules[:value] is an array and does contain a match for @data' do
+      expect { Lookslike::ValidationRule.new('name', 1, value: [2, 3, 4]).validate_value }.to raise_error Lookslike::Errors::ValueError
+    end
+
+    it 'should not raise if @rules[:value] is a single value and matches @data' do
+      expect { Lookslike::ValidationRule.new('name', 1, value: 1).validate_value }.to_not raise_error
+    end
+
+    it 'should not raise if @rules[:value] is an array and contains a match for @data' do
+      expect { Lookslike::ValidationRule.new('name', 1, value: [1, 2, 3]).validate_value }.to_not raise_error
+    end
+  end
+
+  describe '#validate_validator' do
+    it 'should raise Errors::ValidationError if @data does validates against the validator specified in @rules[:validator]' do
+      expect {
+        Lookslike::ValidationRule.new('name', { attr: 100 }, validator: MockValidator ).validate_validator
+      }.to raise_error Lookslike::Errors::ValidationError
+    end
+    it 'should not raise if @data validates against the validator specified in @rules[:validator]' do
+      expect {
+        Lookslike::ValidationRule.new('name', { attr: "100" }, validator: MockValidator ).validate_validator
+      }.to_not raise_error
+    end
+  end
+
+  describe '#validate_url' do
+    it 'should raise Errors::TypeError if @data is not a url and @rules[:url] is true' do
+      expect {
+        Lookslike::ValidationRule.new('name', 'google.com', url: true ).validate_url
+      }.to raise_error Lookslike::Errors::TypeError
+    end
+    it 'should not raise if @data is a url and @rules[:url] is true' do
+      expect {
+        Lookslike::ValidationRule.new('name', 'https://google.com' ).validate_url
+      }.to_not raise_error
+    end
+  end
+
+  #     def validate_url
+  #       raise Errors::TypeError.new('must be a valid url') unless @data =~ URI::regexp
   #     end
 
 end
-
-
-# module LooksLike
-#   class ValidationRule
-#     # for each defined rule, call
-#     # the named validator for that rule
-#     def validate
-#       begin
-#         @rules.map{ |k, v| self.send("validate_" + k.to_s) }
-#       rescue Errors::ValidationError => e
-#         raise build_error(e)
-#       end
-#     end
-#
-#     def build_error(e)
-#       e.class.new('property ' + @name + ': ' + e.message)
-#     end
-#
-#     def validate_required
-#       raise Errors::RequiredError.new('must be present') if @data.nil?
-#     end
-#
-#     def validate_type(data, type)
-#       raise Errors::TypeError.new('must be of type ' + @rules[:type].to_s) unless @data.is_a? @rules[:type]
-#     end
-#
-#     def validate_members
-#       #raise Errors::MembersError.new("must be of type " + @type.to_s) unless @data.is_a? @type
-#     end
-#
-#     def validate_custom
-#       begin
-#         @rules[:custom].call
-#       rescue StandardError => e
-#         raise Errors::CustomError.new(@rules[:custom_message])
-#       end
-#     end
-#
-#     def validate_value
-#       if @rules[:value].is_a? Array
-#         raise Errors::ValueError.new('must be one of ' + @rules[:value].to_s) unless @data.include? @rules[:value]
-#       else
-#         raise Errors::ValueError.new('must be equal to ' + @rules[:value]) unless @data == @rules[:value]
-#       end
-#     end
-#
-#     def validate_validator
-#       @rules[:validator].new(@data).validate
-#     end
-#
-#     def validate_url
-#       raise Errors::TypeError.new('must be a valid url') unless @data =~ URI::regexp
-#     end
-#   end
-# end

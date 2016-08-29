@@ -1,17 +1,8 @@
 require 'spec_helper'
 
 describe Lookslike::Errors::CustomError do
-  it 'should have the expected .message' do
-    expected = 'message'
-    expect(Lookslike::Errors::CustomError.new(expected).message).to eq expected
-  end
-
-  it 'should be caught by the expected rescue' do
-    begin
-      raise Lookslike::Errors::CustomError.new
-      expect(true).to eq false
-    rescue Lookslike::Errors::CustomError => e
-      expect(true).to eq true
-    end
+  it 'should be caught by the expected rescue and have the expected message' do
+    message = 'message'
+    expect { raise Lookslike::Errors::CustomError.new(message) }.to raise_error Lookslike::Errors::CustomError, message
   end
 end

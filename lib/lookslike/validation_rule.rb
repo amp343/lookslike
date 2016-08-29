@@ -4,11 +4,9 @@ module Lookslike
     attr_reader :name, :data, :rules
 
     def initialize(name, data, rules = {})
-      type_check name, rules
-
-      @name   = name
+      @name   = type_check name, String
       @data   = data
-      @rules  = rules
+      @rules  = type_check rules, Hash
     end
 
     # for each defined rule, call
@@ -17,20 +15,19 @@ module Lookslike
       begin
         @rules.map{ |k, v| self.send("validate_" + k.to_s) }
       rescue Errors::ValidationError => e
-        raise build_error(e)
+        raise decorate_error e
       end
     end
 
-    # TODO: decorate_error?
-    def build_error(e)
-      e.class.new('property ' + @name + ': ' + e.message)
+    def decorate_error(e)
+      e.class.new "property #{@name}: #{e.message}"
     end
 
     def validate_required
       raise Errors::RequiredError.new('must be present') if @data.nil?
     end
 
-    def validate_type(data, type)
+    def validate_type
       raise Errors::TypeError.new('must be of type ' + @rules[:type].to_s) unless @data.is_a? @rules[:type]
     end
 
@@ -39,18 +36,19 @@ module Lookslike
     end
 
     def validate_custom
+      proc = type_check(@rules[:custom], Proc)
       begin
-        @rules[:custom].call
+        proc.call
       rescue StandardError => e
-        raise Errors::CustomError.new(@rules[:custom_message])
+        raise Errors::CustomError.new(@rules[:custom_message] || '')
       end
     end
 
     def validate_value
       if @rules[:value].is_a? Array
-        raise Errors::ValueError.new('must be one of ' + @rules[:value].to_s) unless @data.include? @rules[:value]
+        raise Errors::ValueError.new('must be one of ' + @rules[:value].to_s) unless @rules[:value].include? @data
       else
-        raise Errors::ValueError.new('must be equal to ' + @rules[:value]) unless @data == @rules[:value]
+        raise Errors::ValueError.new('must be equal to ' + @rules[:value].to_s) unless @data == @rules[:value]
       end
     end
 
@@ -62,11 +60,10 @@ module Lookslike
       raise Errors::TypeError.new('must be a valid url') unless @data =~ URI::regexp
     end
 
-    protected
-
-    def type_check(name, rules)
-      raise TypeError.new 'name must be a String' unless name.is_a? String
-      raise TypeError.new 'rules must be a Hash' unless rules.is_a? Hash
+    def type_check(value, type)
+      raise TypeError.new "#{value.to_s} must be a #{type}" unless value.is_a? type
+      value
     end
+
   end
 end

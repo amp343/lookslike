@@ -19,7 +19,7 @@ module Lookslike
     end
 
     def build_error(e)
-      Errors::ValidationError.new((@name.present? ? @name + ' ' : '') + e.message)
+      Errors::ValidationError.new((!@name.nil? ? @name + ' ' : '') + e.message)
     end
   end
 end
