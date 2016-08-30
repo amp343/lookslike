@@ -65,6 +65,24 @@ module Lookslike
       raise Errors::TypeError.new('must be a valid url') unless @data =~ URI::regexp
     end
 
+    def validate_each
+      raise Errors::TypeError.new('@data must be Enumerable to use an :each validator') unless @data.is_a? Enumerable
+
+      # if :each is a named LooksLike::Validator class (or subclass), instantiate and #validate that validator
+      if(
+        @rules[:each].is_a?(Class) && (
+          @rules[:each].is_a?(Lookslike::Validator) || @rules[:each] < Lookslike::Validator
+        )
+      )
+        @data.map { |x| @rules[:each].new(x).validate }
+      # if :each is Hash (ruleset), #validate that ruleset
+      elsif @rules[:each].is_a? Hash
+        @data.map { |x| Lookslike::ValidationRule.new(@name, x, @rules[:each]).validate }
+      else
+        raise Errors::TypeError.new '@rules[:each] must be either a named Lookslike::Validator or Lookslike::ValidationRule set (Hash)'
+      end
+    end
+
     def type_check(value, type)
       raise TypeError.new "#{value.to_s} must be a #{type}" unless value.is_a? type
       value
