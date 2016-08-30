@@ -46,6 +46,17 @@ describe Lookslike::ValidationRule do
     end
   end
 
+  describe '#validatable_rules' do
+    it 'should return a hash of any @rules whose keys are not in @meta_props' do
+      incoming_rules = { required: true, url: true, custom_message: 'message' }
+      expected_validatable_rules = { required: true, url: true }
+      rule = Lookslike::ValidationRule.new('test', 1, incoming_rules)
+
+      expect(rule.validatable_rules).to eq expected_validatable_rules
+      expect(rule.rules).to eq incoming_rules
+    end
+  end
+
   describe '#validate_required' do
     it 'should raise Errors::RequiredError if @data is nil' do
       expect { Lookslike::ValidationRule.new('name', nil).validate_required }.to raise_error Lookslike::Errors::RequiredError
@@ -105,7 +116,7 @@ describe Lookslike::ValidationRule do
   end
 
   describe '#validate_validator' do
-    it 'should raise Errors::ValidationError if @data does validates against the validator specified in @rules[:validator]' do
+    it 'should raise Errors::ValidationError if @data does validate against the validator specified in @rules[:validator]' do
       expect {
         Lookslike::ValidationRule.new('name', { attr: 100 }, validator: MockValidator ).validate_validator
       }.to raise_error Lookslike::Errors::ValidationError
@@ -129,9 +140,4 @@ describe Lookslike::ValidationRule do
       }.to_not raise_error
     end
   end
-
-  #     def validate_url
-  #       raise Errors::TypeError.new('must be a valid url') unless @data =~ URI::regexp
-  #     end
-
 end

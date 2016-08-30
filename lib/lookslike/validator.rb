@@ -1,8 +1,11 @@
 module Lookslike
   class Validator
-    def initialize(data)
+
+    attr_reader :rules, :data
+
+    def initialize(data, rules = [])
       @data = data
-      @rules = []
+      @rules = rules
     end
 
     def validate

@@ -4,19 +4,24 @@ module Lookslike
     attr_reader :name, :data, :rules
 
     def initialize(name, data, rules = {})
-      @name   = type_check name, String
-      @data   = data
-      @rules  = type_check rules, Hash
+      @name       = type_check name, String
+      @data       = data
+      @rules      = type_check rules, Hash
+      @meta_props = [:custom_message]
     end
 
     # for each defined rule, call
     # the named validator for that rule
     def validate
       begin
-        @rules.map{ |k, v| self.send("validate_" + k.to_s) }
+        validatable_rules.map{ |k, v| self.send("validate_" + k.to_s) }
       rescue Errors::ValidationError => e
         raise decorate_error e
       end
+    end
+
+    def validatable_rules
+      @rules.dup.delete_if {|k,v| @meta_props.include? k}
     end
 
     def decorate_error(e)
