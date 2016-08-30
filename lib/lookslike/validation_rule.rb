@@ -87,15 +87,15 @@ module Lookslike
       raise TypeError.new '@data must be an Array to use the :size validator' unless @data.is_a? Array
 
       if @rules[:size].is_a?(Integer)
-        raise Errors::SizeError.new "must be exactly size #{@rules[:size].to_s}" if @data.length != rules[:size]
+        raise Errors::SizeError.new "length must be exactly size #{@rules[:size].to_s}" if @data.length != rules[:size]
       elsif @rules[:size].is_a?(Enumerable) && @rules[:size].values.reduce(true) {|c, v| c && v.is_a?(Integer) }
         if @rules[:size][:min] || @rules[:size][:max]
           messages = []
           if @rules[:size][:min] && @data.length < @rules[:size][:min]
-            messages << "must be >= #{@rules[:size][:min].to_s}"
+            messages << "length must be >= #{@rules[:size][:min].to_s}"
           end
           if @rules[:size][:max] && @data.length > @rules[:size][:max]
-            messages << "must be >= #{@rules[:size][:min].to_s}"
+            messages << "length must be >= #{@rules[:size][:min].to_s}"
           end
           raise Errors::SizeError.new messages.join 'and' if messages.length > 0
         end
