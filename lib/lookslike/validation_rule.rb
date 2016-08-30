@@ -66,7 +66,7 @@ module Lookslike
     end
 
     def validate_each
-      raise Errors::TypeError.new('@data must be Enumerable to use an :each validator') unless @data.is_a? Enumerable
+      raise TypeError.new('@data must be Enumerable to use the :each validator') unless @data.is_a? Enumerable
 
       # if :each is a named LooksLike::Validator class (or subclass), instantiate and #validate that validator
       if(
@@ -79,7 +79,28 @@ module Lookslike
       elsif @rules[:each].is_a? Hash
         @data.map { |x| Lookslike::ValidationRule.new(@name, x, @rules[:each]).validate }
       else
-        raise Errors::TypeError.new '@rules[:each] must be either a named Lookslike::Validator or Lookslike::ValidationRule set (Hash)'
+        raise TypeError.new '@rules[:each] must be either a named Lookslike::Validator or Lookslike::ValidationRule set (Hash)'
+      end
+    end
+
+    def validate_size
+      raise TypeError.new '@data must be an Array to use the :size validator' unless @data.is_a? Array
+
+      if @rules[:size].is_a?(Integer)
+        raise Errors::SizeError.new "must be exactly size #{@rules[:size].to_s}" if @data.length != rules[:size]
+      elsif @rules[:size].is_a?(Enumerable) && @rules[:size].values.reduce(true) {|c, v| c && v.is_a?(Integer) }
+        if @rules[:size][:min] || @rules[:size][:max]
+          messages = []
+          if @rules[:size][:min] && @data.length < @rules[:size][:min]
+            messages << "must be >= #{@rules[:size][:min].to_s}"
+          end
+          if @rules[:size][:max] && @data.length > @rules[:size][:max]
+            messages << "must be >= #{@rules[:size][:min].to_s}"
+          end
+          raise Errors::SizeError.new messages.join 'and' if messages.length > 0
+        end
+      else
+        raise TypeError.new '@rules[:size] must be an Integer value or Hash of Integer values to use the :size validator'
       end
     end
 
@@ -87,6 +108,5 @@ module Lookslike
       raise TypeError.new "#{value.to_s} must be a #{type}" unless value.is_a? type
       value
     end
-
   end
 end
